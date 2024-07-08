@@ -1,0 +1,85 @@
+Конечно, давайте разберём каждый шаг более подробно с примерами:
+
+1. **Подготовка Delphi-приложения**:
+   - Определите класс и заголовок окна, которое будет родительским для WPF-приложения. Это нужно для того, чтобы `FindWindow` могла найти нужное окно.
+   - Используйте `FindWindow` для получения дескриптора окна.
+
+   ```delphi
+   var
+     ParentHandle: HWND;
+   begin
+     ParentHandle := FindWindow('ClassName', 'WindowName');
+     // ClassName и WindowName должны соответствовать вашему приложению
+   end;
+   ```
+
+2. **Запуск WPF-приложения**:
+   - Запустите WPF-приложение как отдельный процесс. Для этого можно использовать `ShellExecute`, передавая дескриптор окна как аргумент.
+
+   ```delphi
+   ShellExecute(Handle, 'open', 'ПутьКВашемуWpfApp.exe', PChar('/parentHwnd ' + IntToStr(ParentHandle)), nil, SW_SHOW);
+   ```
+
+3. **Настройка WPF-приложения**:
+   - В `App.xaml.cs` добавьте обработку аргументов командной строки, чтобы извлечь дескриптор родительского окна и установить его как владельца главного окна WPF-приложения.
+
+   ```csharp
+   protected override void OnStartup(StartupEventArgs e)
+   {
+       base.OnStartup(e);
+
+       // Парсинг аргументов командной строки
+       var args = e.Args;
+       if (args.Length > 0)
+       {
+           var argument = args[0].Split(new char[] { ' ' });
+           if (argument[0] == "/parentHwnd" && argument.Length > 1)
+           {
+               IntPtr parentHwnd;
+               if (IntPtr.TryParse(argument[1], out parentHwnd))
+               {
+                   MainWindow mainWindow = new MainWindow();
+                   var helper = new WindowInteropHelper(mainWindow);
+                   helper.Owner = parentHwnd;
+
+                   mainWindow.Show();
+               }
+           }
+       }
+   }
+   ```
+
+4. **Управление поведением WPF-приложения**:
+   - Используйте Windows API для управления поведением WPF-приложения, например, для обработки событий изменения размера или закрытия.
+
+5. **Обработка сообщений в WPF**:
+   - В классе `MainWindow` добавьте методы для настройки обработки сообщений и сам обработчик сообщений.
+
+   ```csharp
+   public partial class MainWindow : Window
+   {
+       public MainWindow()
+       {
+           InitializeComponent();
+           ConfigureWindowForMessages();
+       }
+
+       private void ConfigureWindowForMessages()
+       {
+           HwndSource source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+           source.AddHook(new HwndSourceHook(WndProc));
+       }
+
+       private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+       {
+           // Обработка сообщений
+           // Здесь вы можете добавить свою логику обработки сообщений Windows
+           return IntPtr.Zero;
+       }
+   }
+   ```
+
+6. **Централизация логики**:
+   - Всю логику обработки сообщений и управления окном целесообразно сосредоточить в одном месте, например, в `MainWindow` или `App.xaml.cs`.
+
+Эти шаги помогут вам интегрировать WPF-приложение в Delphi-приложение, создавая эффективное взаимодействие между двумя системами. Если у вас возникнут вопросы по этим шагам или нужна будет дополнительная помощь, не стесняйтесь обращаться. 
